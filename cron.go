@@ -199,6 +199,15 @@ func (c *Cron) run() {
 					go c.runWithRecovery(e.Job)
 					e.Prev = e.Next
 					e.Next = e.Schedule.Next(now)
+					task := e.Schedule.(*SpecSchedule)
+					if task.OnlyOnce {
+						for k, v := range c.entries {
+							if v == e {
+								c.entries = append(c.entries[:k], c.entries[k+1:]...)
+								break
+							}
+						}
+					}
 				}
 
 			case newEntry := <-c.add:

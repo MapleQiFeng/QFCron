@@ -79,8 +79,19 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 	if len(spec) == 0 {
 		return nil, fmt.Errorf("Empty spec string")
 	}
+	var only bool
 	if spec[0] == '@' && p.options&Descriptor > 0 {
 		return parseDescriptor(spec)
+	} else {
+		timeArr := strings.Split(spec, " ")
+		if len(timeArr) > 6 {
+			year := timeArr[6]
+			if strings.Compare(year, "*") == 0 {
+				only = true
+			} 
+			timeArr = timeArr[0:6]
+			spec = strings.Join(timeArr, " ")
+		}
 	}
 
 	// Figure out how many fields we need
@@ -129,12 +140,13 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 	}
 
 	return &SpecSchedule{
-		Second: second,
-		Minute: minute,
-		Hour:   hour,
-		Dom:    dayofmonth,
-		Month:  month,
-		Dow:    dayofweek,
+		Second:   second,
+		Minute:   minute,
+		Hour:     hour,
+		Dom:      dayofmonth,
+		Month:    month,
+		Dow:      dayofweek,
+		OnlyOnce: only,
 	}, nil
 }
 

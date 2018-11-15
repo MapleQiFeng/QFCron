@@ -6,6 +6,7 @@ import "time"
 // traditional crontab specification. It is computed initially and stored as bit sets.
 type SpecSchedule struct {
 	Second, Minute, Hour, Dom, Month, Dow uint64
+	OnlyOnce                              bool
 }
 
 // bounds provides a range of acceptable values (plus a map of name to value).
