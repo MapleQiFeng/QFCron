@@ -86,7 +86,7 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 		timeArr := strings.Split(spec, " ")
 		if len(timeArr) > 6 {
 			year := timeArr[6]
-			if strings.Compare(year, "*") == 0 {
+			if strings.Compare(year, "*") != 0 {
 				only = true
 			} 
 			timeArr = timeArr[0:6]
