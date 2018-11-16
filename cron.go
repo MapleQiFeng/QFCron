@@ -247,6 +247,7 @@ func (c *Cron) run() {
 			case removeID := <-c.remove:
 				for k, v := range c.entries {
 					if v.ID == removeID {
+						timer.Stop()
 						c.entries = append(c.entries[:k], c.entries[k+1:]...)
 					}
 					break
