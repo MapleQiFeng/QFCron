@@ -128,17 +128,21 @@ func (c *Cron) Schedule(schedule Schedule, cmd Job, id uint64) {
 //Remove 从Cron中移除相应ID的entry
 func (c *Cron) Remove(id uint64) {
 	if !c.running {
-		for k, v := range c.entries {
-			if v.ID == id {
-				c.entries = append(c.entries[:k], c.entries[k+1:]...)
-				c.remove <- id
-			}
-			break
-		}
+		c.RemoveEntry(id)
 	} else {
 		c.remove <- id
 	}
 
+}
+
+func (c *Cron) RemoveEntry(id uint64){
+	for k, v := range c.entries {
+		if v.ID == id {
+			c.entries = append(c.entries[:k], c.entries[k+1:]...)
+			c.remove <- id
+		}
+		break
+	}
 }
 
 // Entries returns a snapshot of the cron entries.
@@ -234,13 +238,7 @@ func (c *Cron) run() {
 					//只执行一次的任务执行完毕从entries中移除掉
 					task := e.Schedule.(*SpecSchedule)
 					if task.OnlyOnce {
-						for k, v := range c.entries {
-							if v.ID == e.ID {
-								timer.Stop()
-								c.entries = append(c.entries[:k], c.entries[k+1:]...)
-							}
-							break
-						}
+						c.RemoveEntry(e.ID)
 					}
 				}
 
@@ -251,13 +249,7 @@ func (c *Cron) run() {
 				c.entries = append(c.entries, newEntry)
 
 			case removeID := <-c.remove:
-				for k, v := range c.entries {
-					if v.ID == removeID {
-						timer.Stop()
-						c.entries = append(c.entries[:k], c.entries[k+1:]...)
-					}
-					break
-				}
+				c.RemoveEntry(removeID)
 
 			case <-c.snapshot:
 				c.snapshot <- c.entrySnapshot()
