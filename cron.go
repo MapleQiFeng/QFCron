@@ -135,11 +135,10 @@ func (c *Cron) Remove(id uint64) {
 
 }
 
-func (c *Cron) RemoveEntry(id uint64){
+func (c *Cron) RemoveEntry(id uint64) {
 	for k, v := range c.entries {
 		if v.ID == id {
 			c.entries = append(c.entries[:k], c.entries[k+1:]...)
-			c.remove <- id
 		}
 		break
 	}
