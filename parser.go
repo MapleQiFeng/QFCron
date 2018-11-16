@@ -80,6 +80,7 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 		return nil, fmt.Errorf("Empty spec string")
 	}
 	var only bool
+	var y int
 	if spec[0] == '@' && p.options&Descriptor > 0 {
 		return parseDescriptor(spec)
 	} else {
@@ -88,7 +89,8 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 			year := timeArr[6]
 			if strings.Compare(year, "*") != 0 {
 				only = true
-			} 
+				y, _ = strconv.Atoi(year)
+			}
 			timeArr = timeArr[0:6]
 			spec = strings.Join(timeArr, " ")
 		}
@@ -147,6 +149,7 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 		Month:    month,
 		Dow:      dayofweek,
 		OnlyOnce: only,
+		Year:     y,
 	}, nil
 }
 

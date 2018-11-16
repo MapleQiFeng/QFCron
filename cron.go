@@ -68,6 +68,16 @@ func (s byTime) Less(i, j int) bool {
 	if s[j].Next.IsZero() {
 		return true
 	}
+	n := time.Now().Year()
+	si := s[i].Schedule.(*SpecSchedule)
+	sj := s[j].Schedule.(*SpecSchedule)
+	if si.Year-n > 0 {
+		s[i].Next = s[i].Next.AddDate(1, 0, 0)
+	}
+	if sj.Year-n > 0 {
+		s[j].Next = s[j].Next.AddDate(1, 0, 0)
+	}
+
 	return s[i].Next.Before(s[j].Next)
 }
 
@@ -249,6 +259,8 @@ func (c *Cron) run() {
 
 			case removeID := <-c.remove:
 				c.RemoveEntry(removeID)
+				defer c.run()
+				return
 
 			case <-c.snapshot:
 				c.snapshot <- c.entrySnapshot()

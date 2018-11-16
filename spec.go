@@ -7,6 +7,7 @@ import "time"
 type SpecSchedule struct {
 	Second, Minute, Hour, Dom, Month, Dow uint64
 	OnlyOnce                              bool
+	Year                                  int
 }
 
 // bounds provides a range of acceptable values (plus a map of name to value).
