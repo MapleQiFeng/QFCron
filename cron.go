@@ -14,6 +14,7 @@ type Cron struct {
 	entries  []*Entry
 	stop     chan struct{}
 	add      chan *Entry
+	remove   chan uint64
 	snapshot chan []*Entry
 	running  bool
 	ErrorLog *log.Logger
@@ -47,6 +48,8 @@ type Entry struct {
 
 	// The Job to run.
 	Job Job
+
+	ID uint64
 }
 
 // byTime is a wrapper for sorting the entry array by time
@@ -78,6 +81,7 @@ func NewWithLocation(location *time.Location) *Cron {
 	return &Cron{
 		entries:  nil,
 		add:      make(chan *Entry),
+		remove:   make(chan uint64),
 		stop:     make(chan struct{}),
 		snapshot: make(chan []*Entry),
 		running:  false,
@@ -92,25 +96,26 @@ type FuncJob func()
 func (f FuncJob) Run() { f() }
 
 // AddFunc adds a func to the Cron to be run on the given schedule.
-func (c *Cron) AddFunc(spec string, cmd func()) error {
-	return c.AddJob(spec, FuncJob(cmd))
+func (c *Cron) AddFunc(spec string, cmd func(), id uint64) error {
+	return c.AddJob(spec, FuncJob(cmd), id)
 }
 
 // AddJob adds a Job to the Cron to be run on the given schedule.
-func (c *Cron) AddJob(spec string, cmd Job) error {
+func (c *Cron) AddJob(spec string, cmd Job, id uint64) error {
 	schedule, err := Parse(spec)
 	if err != nil {
 		return err
 	}
-	c.Schedule(schedule, cmd)
+	c.Schedule(schedule, cmd, id)
 	return nil
 }
 
 // Schedule adds a Job to the Cron to be run on the given schedule.
-func (c *Cron) Schedule(schedule Schedule, cmd Job) {
+func (c *Cron) Schedule(schedule Schedule, cmd Job, id uint64) {
 	entry := &Entry{
 		Schedule: schedule,
 		Job:      cmd,
+		ID:       id,
 	}
 	if !c.running {
 		c.entries = append(c.entries, entry)
@@ -118,6 +123,22 @@ func (c *Cron) Schedule(schedule Schedule, cmd Job) {
 	}
 
 	c.add <- entry
+}
+
+//Remove 从Cron中移除相应ID的entry
+func (c *Cron) Remove(id uint64) {
+	if !c.running {
+		for k, v := range c.entries {
+			if v.ID == id {
+				c.entries = append(c.entries[:k], c.entries[k+1:]...)
+				c.remove <- id
+			}
+			break
+		}
+	} else {
+		c.remove <- id
+	}
+
 }
 
 // Entries returns a snapshot of the cron entries.
@@ -178,6 +199,16 @@ func (c *Cron) run() {
 		// Determine the next entry to run.
 		sort.Sort(byTime(c.entries))
 
+		// if len(c.entries) != 0{
+		// 	first := c.entries[0]
+		// 	s := first.Schedule.(*SpecSchedule)
+		// 	//如果是只执行一次的任务，并且年份大于当前年份时跳过
+		// 	if s.OnlyOnce {
+
+		// 		continue
+		// 	}
+		// }
+
 		var timer *time.Timer
 		if len(c.entries) == 0 || c.entries[0].Next.IsZero() {
 			// If there are no entries yet, just sleep - it still handles new entries
@@ -199,14 +230,11 @@ func (c *Cron) run() {
 					go c.runWithRecovery(e.Job)
 					e.Prev = e.Next
 					e.Next = e.Schedule.Next(now)
+
+					//只执行一次的任务执行完毕从entries中移除掉
 					task := e.Schedule.(*SpecSchedule)
 					if task.OnlyOnce {
-						for k, v := range c.entries {
-							if v == e {
-								c.entries = append(c.entries[:k], c.entries[k+1:]...)
-								break
-							}
-						}
+						c.Remove(e.ID)
 					}
 				}
 
@@ -215,6 +243,14 @@ func (c *Cron) run() {
 				now = c.now()
 				newEntry.Next = newEntry.Schedule.Next(now)
 				c.entries = append(c.entries, newEntry)
+
+			case removeID := <-c.remove:
+				for k, v := range c.entries {
+					if v.ID == removeID {
+						c.entries = append(c.entries[:k], c.entries[k+1:]...)
+					}
+					break
+				}
 
 			case <-c.snapshot:
 				c.snapshot <- c.entrySnapshot()
