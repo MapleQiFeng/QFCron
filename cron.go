@@ -234,7 +234,13 @@ func (c *Cron) run() {
 					//只执行一次的任务执行完毕从entries中移除掉
 					task := e.Schedule.(*SpecSchedule)
 					if task.OnlyOnce {
-						c.Remove(e.ID)
+						for k, v := range c.entries {
+							if v.ID == e.ID {
+								timer.Stop()
+								c.entries = append(c.entries[:k], c.entries[k+1:]...)
+							}
+							break
+						}
 					}
 				}
 
