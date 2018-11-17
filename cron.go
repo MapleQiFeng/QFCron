@@ -57,7 +57,16 @@ type Entry struct {
 // (with zero time at the end).
 type byTime []*Entry
 
-func (s byTime) Len() int      { return len(s) }
+func (s byTime) Len() int {
+	if len(s) == 1 {
+		sc := s[0].Schedule.(*SpecSchedule)
+		if sc.OnlyOnce {
+			n := time.Now().Year()
+			s[0].Next = s[0].Next.AddDate(sc.Year-n, 0, 0)
+		}
+	}
+	return len(s)
+}
 func (s byTime) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s byTime) Less(i, j int) bool {
 	// Two zero times should return false.
