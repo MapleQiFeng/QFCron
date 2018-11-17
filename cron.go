@@ -72,10 +72,10 @@ func (s byTime) Less(i, j int) bool {
 	si := s[i].Schedule.(*SpecSchedule)
 	sj := s[j].Schedule.(*SpecSchedule)
 	if si.Year-n > 0 {
-		s[i].Next = s[i].Next.AddDate(1, 0, 0)
+		s[i].Next = s[i].Next.AddDate(si.Year-n, 0, 0)
 	}
 	if sj.Year-n > 0 {
-		s[j].Next = s[j].Next.AddDate(1, 0, 0)
+		s[j].Next = s[j].Next.AddDate(sj.Year-n, 0, 0)
 	}
 
 	return s[i].Next.Before(s[j].Next)
