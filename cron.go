@@ -14,6 +14,7 @@ type Cron struct {
 	entries  []*Entry
 	stop     chan struct{}
 	add      chan *Entry
+	put      chan *Entry
 	remove   chan uint64
 	snapshot chan []*Entry
 	running  bool
@@ -92,6 +93,7 @@ func NewWithLocation(location *time.Location) *Cron {
 		entries:  nil,
 		add:      make(chan *Entry),
 		remove:   make(chan uint64),
+		put:      make(chan *Entry),
 		stop:     make(chan struct{}),
 		snapshot: make(chan []*Entry),
 		running:  false,
@@ -133,6 +135,29 @@ func (c *Cron) Schedule(schedule Schedule, cmd Job, id uint64) {
 	}
 
 	c.add <- entry
+}
+
+func (c *Cron) PutSchedule(spec string, cmd Job, id uint64) error {
+	sc, err := Parse(spec)
+	if err != nil {
+		return err
+	}
+	entry := &Entry{
+		Schedule: sc,
+		Job:      cmd,
+		ID:       id,
+	}
+	if !c.running {
+		for k, v := range c.entries {
+			if v.ID == id {
+				c.entries[k] = entry
+			}
+			return nil
+		}
+	}
+
+	c.put <- entry
+	return nil
 }
 
 //Remove 从Cron中移除相应ID的entry
@@ -256,6 +281,15 @@ func (c *Cron) run() {
 				now = c.now()
 				newEntry.Next = newEntry.Schedule.Next(now)
 				c.entries = append(c.entries, newEntry)
+
+			case putEntry := <-c.put:
+				for k, v := range c.entries {
+					if v.ID == putEntry.ID {
+						c.entries[k] = putEntry
+					}
+				}
+				defer c.run()
+				return
 
 			case removeID := <-c.remove:
 				c.RemoveEntry(removeID)
