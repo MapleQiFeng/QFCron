@@ -60,8 +60,8 @@ type byTime []*Entry
 func (s byTime) Len() int {
 	if len(s) == 1 {
 		sc := s[0].Schedule.(*SpecSchedule)
-		if sc.OnlyOnce {
-			n := time.Now().Year()
+		n := time.Now().Year()
+		if sc.Year-n > 0 {
 			s[0].Next = s[0].Next.AddDate(sc.Year-n, 0, 0)
 		}
 	}
